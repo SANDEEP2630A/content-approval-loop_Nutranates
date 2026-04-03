@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scrollhouse — Approval Dashboard</title>
+<meta name="description" content="Script approval workflow dashboard for Scrollhouse content agency.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f0f0f;--surface:#1a1a1a;--card:#242424;--card-hover:#2c2c2c;
+  --accent:#f0a500;--accent-dim:#f0a50033;--text:#e8e8e8;--text-dim:#888;
+  --border:#333;--radius:12px;--radius-sm:8px;
+  --green:#22c55e;--amber:#f59e0b;--blue:#3b82f6;--red:#ef4444;
+  --dark-red:#dc2626;--purple:#8b5cf6;--gray:#6b7280;--cyan:#06b6d4;
+  --shadow:0 4px 24px rgba(0,0,0,.4);
+  --transition:all .25s cubic-bezier(.4,0,.2,1);
+}
+html{font-size:15px}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+a{color:var(--accent);text-decoration:none}
+
+/* ── Header ─────────────────────────────────────── */
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:64px;position:sticky;top:0;z-index:100;backdrop-filter:blur(12px)}
+.logo{display:flex;align-items:center;gap:.65rem;font-weight:800;font-size:1.35rem;letter-spacing:-.5px}
+.logo i{color:var(--accent);font-size:1.1rem}
+.logo span{background:linear-gradient(135deg,var(--accent),#ffd166);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header-right{display:flex;align-items:center;gap:1.5rem}
+.live-clock{font-variant-numeric:tabular-nums;font-size:.85rem;color:var(--text-dim);font-weight:500}
+.connection-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse-dot 2s infinite}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── Nav Tabs ───────────────────────────────────── */
+.nav{display:flex;gap:4px;background:var(--surface);padding:.5rem 2rem;border-bottom:1px solid var(--border)}
+.nav-btn{background:none;border:none;color:var(--text-dim);font-family:inherit;font-size:.85rem;font-weight:500;padding:.6rem 1.2rem;border-radius:var(--radius-sm);cursor:pointer;transition:var(--transition);display:flex;align-items:center;gap:.5rem}
+.nav-btn:hover{color:var(--text);background:var(--card)}
+.nav-btn.active{color:var(--accent);background:var(--accent-dim)}
+
+/* ── Layout ─────────────────────────────────────── */
+.page{display:none;padding:2rem;max-width:1400px;margin:0 auto;animation:fadeUp .35s ease}
+.page.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Stat Cards ─────────────────────────────────── */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:2rem}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.4rem;transition:var(--transition);position:relative;overflow:hidden}
+.stat-card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:var(--shadow)}
+.stat-card .icon-circle{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;margin-bottom:.8rem}
+.stat-card h3{font-size:.8rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.8px;font-weight:500}
+.stat-card .value{font-size:2rem;font-weight:700;margin-top:.25rem}
+.stat-card::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:3px 3px 0 0}
+.stat-total .icon-circle{background:var(--accent-dim);color:var(--accent)}
+.stat-total::after{background:var(--accent)}
+.stat-approved .icon-circle{background:#22c55e22;color:var(--green)}
+.stat-approved::after,.stat-approved .value{background:none;color:var(--green)}
+.stat-approved::after{background:var(--green)}
+.stat-pending .icon-circle{background:#f59e0b22;color:var(--amber)}
+.stat-pending::after{background:var(--amber)}
+.stat-pending .value{color:var(--amber)}
+.stat-escalated .icon-circle{background:#ef444422;color:var(--red)}
+.stat-escalated::after{background:var(--red)}
+.stat-escalated .value{color:var(--red)}
+
+/* ── Table ──────────────────────────────────────── */
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.table-header{padding:1.2rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.table-header h2{font-size:1.05rem;font-weight:600}
+.table-header .auto-ref{font-size:.75rem;color:var(--text-dim)}
+table{width:100%;border-collapse:collapse}
+thead th{text-align:left;padding:.85rem 1.2rem;font-size:.75rem;text-transform:uppercase;letter-spacing:.7px;color:var(--text-dim);font-weight:600;border-bottom:1px solid var(--border);background:var(--surface)}
+tbody tr{border-bottom:1px solid #1f1f1f;transition:var(--transition)}
+tbody tr:hover{background:var(--card-hover)}
+tbody td{padding:.75rem 1.2rem;font-size:.88rem;vertical-align:middle}
+.script-id{font-weight:600;color:var(--accent);font-family:'Inter',monospace}
+
+/* ── Badges ─────────────────────────────────────── */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:.3rem .75rem;border-radius:20px;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+.badge-approved{background:#22c55e1a;color:var(--green);border:1px solid #22c55e44}
+.badge-pending{background:#f59e0b1a;color:var(--amber);border:1px solid #f59e0b44}
+.badge-revision{background:#3b82f61a;color:var(--blue);border:1px solid #3b82f644}
+.badge-rejected{background:#ef44441a;color:var(--red);border:1px solid #ef444444}
+.badge-escalated{background:#dc26261a;color:var(--dark-red);border:1px solid #dc262644}
+.badge-paused{background:#8b5cf61a;color:var(--purple);border:1px solid #8b5cf644}
+.badge-draft{background:#6b72801a;color:var(--gray);border:1px solid #6b728044}
+.badge-ready{background:#06b6d41a;color:var(--cyan);border:1px solid #06b6d444}
+
+/* ── Buttons ────────────────────────────────────── */
+.btn{font-family:inherit;border:none;border-radius:var(--radius-sm);padding:.55rem 1.1rem;font-size:.8rem;font-weight:600;cursor:pointer;transition:var(--transition);display:inline-flex;align-items:center;gap:.45rem}
+.btn:active{transform:scale(.96)}
+.btn-primary{background:var(--accent);color:#0f0f0f}
+.btn-primary:hover{background:#ffb81c;box-shadow:0 0 20px var(--accent-dim)}
+.btn-ghost{background:transparent;color:var(--text-dim);border:1px solid var(--border)}
+.btn-ghost:hover{color:var(--text);border-color:var(--text-dim)}
+.btn-sm{padding:.4rem .7rem;font-size:.72rem}
+.btn-success{background:var(--green);color:#fff}
+.btn-danger{background:var(--red);color:#fff}
+.btn[disabled]{opacity:.5;pointer-events:none}
+.action-btns{display:flex;gap:.4rem}
+
+/* ── Forms ──────────────────────────────────────── */
+.form-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:2rem;max-width:560px;margin:0 auto}
+.form-card h2{font-size:1.2rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:.5rem}
+.form-group{margin-bottom:1.2rem}
+.form-group label{display:block;font-size:.8rem;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.6px;margin-bottom:.45rem}
+.form-group select,.form-group textarea,.form-group input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.7rem 1rem;color:var(--text);font-family:inherit;font-size:.9rem;transition:var(--transition);outline:none}
+.form-group select:focus,.form-group textarea:focus,.form-group input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim)}
+.form-group textarea{resize:vertical;min-height:140px}
+.form-result{margin-top:1.5rem;padding:1.2rem;background:var(--surface);border-radius:var(--radius-sm);border:1px solid var(--border);display:none}
+.form-result.show{display:block;animation:fadeUp .3s ease}
+.form-result pre{font-size:.8rem;color:var(--text-dim);white-space:pre-wrap;word-break:break-all;margin-top:.8rem}
+.decision-badge{font-size:1.1rem;padding:.5rem 1.4rem;border-radius:var(--radius)}
+
+/* ── Monitor Grid ───────────────────────────────── */
+.monitor-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem}
+.monitor-header h2{font-size:1.2rem}
+.monitor-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem}
+.monitor-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.3rem;transition:var(--transition);position:relative;overflow:hidden}
+.monitor-card:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.monitor-card.highlight{animation:cardPulse .6s ease}
+@keyframes cardPulse{0%{box-shadow:0 0 0 0 var(--accent)}50%{box-shadow:0 0 0 6px var(--accent-dim)}100%{box-shadow:0 0 0 0 transparent}}
+.monitor-card .card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:.8rem}
+.monitor-card .card-id{font-weight:700;font-size:1rem;color:var(--accent)}
+.monitor-card .card-row{display:flex;justify-content:space-between;font-size:.82rem;color:var(--text-dim);margin-top:.4rem}
+.monitor-card .card-row span:last-child{color:var(--text);font-weight:500}
+.monitor-card .card-border{position:absolute;top:0;left:0;right:0;height:3px}
+
+/* ── Modal ──────────────────────────────────────── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:200;animation:fadeIn .2s ease}
+.modal-overlay.show{display:flex}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:2rem;max-width:520px;width:90%;max-height:80vh;overflow-y:auto;animation:scaleIn .25s ease}
+@keyframes scaleIn{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
+.modal h3{font-size:1.1rem;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem}
+.modal pre{font-size:.8rem;color:var(--text-dim);white-space:pre-wrap;word-break:break-all;background:var(--surface);padding:1rem;border-radius:var(--radius-sm);border:1px solid var(--border)}
+.modal-close{position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--text-dim);font-size:1.1rem;cursor:pointer}
+
+/* ── Toast ──────────────────────────────────────── */
+.toast-container{position:fixed;top:80px;right:1.5rem;z-index:300;display:flex;flex-direction:column;gap:.5rem}
+.toast{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.8rem 1.2rem;display:flex;align-items:center;gap:.6rem;font-size:.82rem;min-width:280px;box-shadow:var(--shadow);animation:slideIn .3s ease;border-left:3px solid var(--accent)}
+.toast.success{border-left-color:var(--green)}
+.toast.error{border-left-color:var(--red)}
+.toast.info{border-left-color:var(--blue)}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+.toast-exit{animation:slideOut .3s ease forwards}
+@keyframes slideOut{to{transform:translateX(120%);opacity:0}}
+
+/* ── Spinner ────────────────────────────────────── */
+.spinner{display:inline-block;width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-overlay{display:none;text-align:center;padding:2rem;color:var(--text-dim)}
+.loading-overlay.show{display:block}
+
+/* ── Responsive ─────────────────────────────────── */
+@media(max-width:768px){
+  .header,.nav{padding-left:1rem;padding-right:1rem}
+  .page{padding:1rem}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .table-wrap{overflow-x:auto}
+  table{min-width:700px}
+  .monitor-grid{grid-template-columns:1fr}
+  .action-btns{flex-direction:column}
+}
+@media(max-width:480px){
+  .stats{grid-template-columns:1fr}
+  .nav{flex-wrap:wrap}
+}
+
+/* ── Scrollbar ──────────────────────────────────── */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--text-dim)}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="logo"><i class="fa-solid fa-scroll"></i><span>Scrollhouse</span></div>
+  <div class="header-right">
+    <div class="connection-dot" id="connDot" title="Backend connection"></div>
+    <div class="live-clock" id="liveClock"></div>
+  </div>
+</header>
+
+<!-- Navigation -->
+<nav class="nav">
+  <button class="nav-btn active" data-page="dashboard"><i class="fa-solid fa-chart-line"></i> Dashboard</button>
+  <button class="nav-btn" data-page="sendApproval"><i class="fa-solid fa-paper-plane"></i> Send Approval</button>
+  <button class="nav-btn" data-page="processReply"><i class="fa-solid fa-reply"></i> Process Reply</button>
+  <button class="nav-btn" data-page="monitor"><i class="fa-solid fa-satellite-dish"></i> Live Monitor</button>
+</nav>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal" style="position:relative">
+    <button class="modal-close" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+    <h3 id="modalTitle"><i class="fa-solid fa-circle-info"></i> Script Status</h3>
+    <pre id="modalBody"></pre>
+  </div>
+</div>
+
+<!-- PAGE 1: Dashboard -->
+<div class="page active" id="page-dashboard">
+  <div class="stats">
+    <div class="stat-card stat-total"><div class="icon-circle"><i class="fa-solid fa-file-lines"></i></div><h3>Total Scripts</h3><div class="value" id="statTotal">—</div></div>
+    <div class="stat-card stat-approved"><div class="icon-circle"><i class="fa-solid fa-circle-check"></i></div><h3>Approved</h3><div class="value" id="statApproved">—</div></div>
+    <div class="stat-card stat-pending"><div class="icon-circle"><i class="fa-solid fa-clock"></i></div><h3>Pending Review</h3><div class="value" id="statPending">—</div></div>
+    <div class="stat-card stat-escalated"><div class="icon-circle"><i class="fa-solid fa-triangle-exclamation"></i></div><h3>Escalated</h3><div class="value" id="statEscalated">—</div></div>
+  </div>
+  <div class="table-wrap">
+    <div class="table-header">
+      <h2><i class="fa-solid fa-table-list"></i> Scripts Overview</h2>
+      <span class="auto-ref"><i class="fa-solid fa-arrows-rotate"></i> Auto-refresh 30s</span>
+    </div>
+    <table>
+      <thead><tr><th>Script ID</th><th>Client Name</th><th>Status</th><th>Version</th><th>Follow Ups</th><th>Actions</th></tr></thead>
+      <tbody id="scriptsTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- PAGE 2: Send Approval -->
+<div class="page" id="page-sendApproval">
+  <div class="form-card">
+    <h2><i class="fa-solid fa-paper-plane" style="color:var(--accent)"></i> Send Approval Request</h2>
+    <div class="form-group">
+      <label>Script ID</label>
+      <select id="approvalScriptId"></select>
+    </div>
+    <button class="btn btn-primary" id="btnSendApproval" onclick="handleSendApproval()"><i class="fa-solid fa-bolt"></i> Send Approval Request</button>
+    <div class="loading-overlay" id="approvalLoading"><div class="spinner"></div><p style="margin-top:.6rem">Sending approval request…</p></div>
+    <div class="form-result" id="approvalResult"></div>
+  </div>
+</div>
+
+<!-- PAGE 3: Process Reply -->
+<div class="page" id="page-processReply">
+  <div class="form-card">
+    <h2><i class="fa-solid fa-reply" style="color:var(--accent)"></i> Process Client Reply</h2>
+    <div class="form-group">
+      <label>Script ID</label>
+      <select id="replyScriptId"></select>
+    </div>
+    <div class="form-group">
+      <label>Client Reply</label>
+      <textarea id="replyText" placeholder="Type client reply here... e.g. looks good!"></textarea>
+    </div>
+    <button class="btn btn-primary" id="btnProcessReply" onclick="handleProcessReply()"><i class="fa-solid fa-gears"></i> Process Reply</button>
+    <div class="loading-overlay" id="replyLoading"><div class="spinner"></div><p style="margin-top:.6rem">Classifying response…</p></div>
+    <div class="form-result" id="replyResult"></div>
+  </div>
+</div>
+
+<!-- PAGE 4: Live Monitor -->
+<div class="page" id="page-monitor">
+  <div class="monitor-header">
+    <h2><i class="fa-solid fa-satellite-dish" style="color:var(--accent)"></i> Live Status Monitor</h2>
+    <button class="btn btn-primary" onclick="refreshMonitor()"><i class="fa-solid fa-arrows-rotate"></i> Refresh All</button>
+  </div>
+  <div class="monitor-grid" id="monitorGrid"></div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   CONFIG
+   ═══════════════════════════════════════════════════════════════════════ */
+const API = 'http://127.0.0.1:8000';
+const SCRIPT_IDS = Array.from({length:10},(_,i)=>`SCR-${String(i+1).padStart(3,'0')}`);
+let allScriptsData = {};
+let previousStatuses = {};
+let refreshTimer = null;
+
+/* ═══════════════════════════════════════════════════════════════════════
+   NAVIGATION
+   ═══════════════════════════════════════════════════════════════════════ */
+document.querySelectorAll('.nav-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.getElementById('page-'+btn.dataset.page).classList.add('active');
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CLOCK
+   ═══════════════════════════════════════════════════════════════════════ */
+function updateClock(){
+  const now=new Date();
+  document.getElementById('liveClock').textContent=now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true})+' · '+now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+}
+setInterval(updateClock,1000);updateClock();
+
+/* ═══════════════════════════════════════════════════════════════════════
+   TOAST
+   ═══════════════════════════════════════════════════════════════════════ */
+function showToast(message,type='info'){
+  const c=document.getElementById('toastContainer');
+  const icons={success:'fa-circle-check',error:'fa-circle-xmark',info:'fa-circle-info'};
+  const t=document.createElement('div');
+  t.className=`toast ${type}`;
+  t.innerHTML=`<i class="fa-solid ${icons[type]||icons.info}"></i><span>${message}</span>`;
+  c.appendChild(t);
+  setTimeout(()=>{t.classList.add('toast-exit');setTimeout(()=>t.remove(),300)},3500);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MODAL
+   ═══════════════════════════════════════════════════════════════════════ */
+function openModal(title,body){
+  document.getElementById('modalTitle').innerHTML=`<i class="fa-solid fa-circle-info" style="color:var(--accent)"></i> ${title}`;
+  document.getElementById('modalBody').textContent=typeof body==='string'?body:JSON.stringify(body,null,2);
+  document.getElementById('modalOverlay').classList.add('show');
+}
+function closeModal(){document.getElementById('modalOverlay').classList.remove('show')}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+
+/* ═══════════════════════════════════════════════════════════════════════
+   STATUS BADGE HELPER
+   ═══════════════════════════════════════════════════════════════════════ */
+function statusClass(s){
+  if(!s)return'badge-draft';
+  const k=s.toLowerCase().replace(/\s+/g,'');
+  const map={approved:'badge-approved',pending:'badge-pending',revision:'badge-revision',rejected:'badge-rejected',escalated:'badge-escalated',paused:'badge-paused',draft:'badge-draft',readyforapproval:'badge-ready'};
+  return map[k]||'badge-draft';
+}
+function statusBorderColor(s){
+  if(!s)return'var(--gray)';
+  const k=s.toLowerCase().replace(/\s+/g,'');
+  const map={approved:'var(--green)',pending:'var(--amber)',revision:'var(--blue)',rejected:'var(--red)',escalated:'var(--dark-red)',paused:'var(--purple)',draft:'var(--gray)',readyforapproval:'var(--cyan)'};
+  return map[k]||'var(--gray)';
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   FETCH ALL STATUSES
+   ═══════════════════════════════════════════════════════════════════════ */
+async function fetchAllStatuses(){
+  const results = await Promise.allSettled(
+    SCRIPT_IDS.map(id=>
+      fetch(`${API}/status/${id}`).then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(d=>({id,data:d,ok:true})).catch(e=>({id,data:null,ok:false,error:e.message}))
+    )
+  );
+  results.forEach(r=>{
+    const v=r.value||r.reason;
+    if(v&&v.ok)allScriptsData[v.id]=v.data;
+    else if(v)allScriptsData[v.id]=allScriptsData[v.id]||{
+      'Script ID':v.id,'Client Name':'—','Status':'Draft','Version':1,'Follow Ups Sent':0
+    };
+  });
+  renderDashboard();
+  renderMonitor();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   RENDER DASHBOARD TABLE
+   ═══════════════════════════════════════════════════════════════════════ */
+function renderDashboard(){
+  const tbody=document.getElementById('scriptsTableBody');
+  const entries=SCRIPT_IDS.map(id=>allScriptsData[id]||{'Script ID':id,'Client Name':'—','Status':'Draft','Version':1,'Follow Ups Sent':0});
+  let total=entries.length,approved=0,pending=0,escalated=0;
+  entries.forEach(e=>{
+    const s=(e.Status||'').toLowerCase();
+    if(s==='approved')approved++;
+    if(s==='pending')pending++;
+    if(s==='escalated')escalated++;
+  });
+  document.getElementById('statTotal').textContent=total;
+  document.getElementById('statApproved').textContent=approved;
+  document.getElementById('statPending').textContent=pending;
+  document.getElementById('statEscalated').textContent=escalated;
+
+  tbody.innerHTML=entries.map(e=>{
+    const sid=e['Script ID']||'—';
+    const status=e.Status||'Draft';
+    return `<tr>
+      <td class="script-id">${sid}</td>
+      <td>${e['Client Name']||'—'}</td>
+      <td><span class="badge ${statusClass(status)}">${status}</span></td>
+      <td>v${e.Version||1}</td>
+      <td>${e['Follow Ups Sent']||0}</td>
+      <td><div class="action-btns">
+        <button class="btn btn-sm btn-primary" onclick="sendApprovalFromTable('${sid}')"><i class="fa-solid fa-paper-plane"></i> Approve</button>
+        <button class="btn btn-sm btn-ghost" onclick="checkStatusModal('${sid}')"><i class="fa-solid fa-eye"></i> Status</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   RENDER MONITOR CARDS
+   ═══════════════════════════════════════════════════════════════════════ */
+function renderMonitor(){
+  const grid=document.getElementById('monitorGrid');
+  grid.innerHTML=SCRIPT_IDS.map(id=>{
+    const e=allScriptsData[id]||{'Script ID':id,'Client Name':'—','Status':'Draft','Version':1,'Follow Ups Sent':0};
+    const status=e.Status||'Draft';
+    const changed=previousStatuses[id]&&previousStatuses[id]!==status;
+    previousStatuses[id]=status;
+    return `<div class="monitor-card${changed?' highlight':''}" id="mon-${id}">
+      <div class="card-border" style="background:${statusBorderColor(status)}"></div>
+      <div class="card-top"><span class="card-id">${id}</span><span class="badge ${statusClass(status)}">${status}</span></div>
+      <div class="card-row"><span>Client</span><span>${e['Client Name']||'—'}</span></div>
+      <div class="card-row"><span>Version</span><span>v${e.Version||1}</span></div>
+      <div class="card-row"><span>Follow Ups</span><span>${e['Follow Ups Sent']||0}</span></div>
+    </div>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   TABLE ACTIONS
+   ═══════════════════════════════════════════════════════════════════════ */
+async function sendApprovalFromTable(scriptId){
+  try{
+    showToast(`Sending approval for ${scriptId}…`,'info');
+    const res=await fetch(`${API}/start-approval`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({script_id:scriptId})});
+    if(!res.ok)throw new Error(`HTTP ${res.status}`);
+    const data=await res.json();
+    showToast(`Approval started for ${data.script_id}`,'success');
+    await fetchAllStatuses();
+  }catch(e){
+    showToast(`Failed: ${e.message}`,'error');
+  }
+}
+
+async function checkStatusModal(scriptId){
+  try{
+    const res=await fetch(`${API}/status/${scriptId}`);
+    if(!res.ok)throw new Error(`HTTP ${res.status}`);
+    const data=await res.json();
+    allScriptsData[scriptId]=data;
+    renderDashboard();
+    openModal(`Status — ${scriptId}`,data);
+  }catch(e){
+    openModal(`Error — ${scriptId}`,`Could not fetch status: ${e.message}`);
+    showToast(`Status fetch failed for ${scriptId}`,'error');
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PAGE 2 — SEND APPROVAL FORM
+   ═══════════════════════════════════════════════════════════════════════ */
+async function handleSendApproval(){
+  const scriptId=document.getElementById('approvalScriptId').value;
+  const btn=document.getElementById('btnSendApproval');
+  const loader=document.getElementById('approvalLoading');
+  const result=document.getElementById('approvalResult');
+  btn.disabled=true;loader.classList.add('show');result.classList.remove('show');
+  try{
+    const res=await fetch(`${API}/start-approval`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({script_id:scriptId})});
+    if(!res.ok)throw new Error(`HTTP ${res.status}`);
+    const data=await res.json();
+    result.innerHTML=`<span class="badge badge-approved" style="font-size:.9rem"><i class="fa-solid fa-circle-check"></i> Approval Started</span><p style="margin-top:.8rem;color:var(--text-dim)">Script <strong style="color:var(--accent)">${data.script_id}</strong> has been sent for approval.</p>`;
+    result.classList.add('show');
+    showToast(`Approval sent for ${data.script_id}`,'success');
+    await fetchAllStatuses();
+  }catch(e){
+    result.innerHTML=`<span class="badge badge-rejected" style="font-size:.9rem"><i class="fa-solid fa-circle-xmark"></i> Error</span><p style="margin-top:.8rem;color:var(--red)">${e.message}</p>`;
+    result.classList.add('show');
+    showToast(`Failed: ${e.message}`,'error');
+  }finally{btn.disabled=false;loader.classList.remove('show')}
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PAGE 3 — PROCESS REPLY FORM
+   ═══════════════════════════════════════════════════════════════════════ */
+async function handleProcessReply(){
+  const scriptId=document.getElementById('replyScriptId').value;
+  const replyText=document.getElementById('replyText').value.trim();
+  if(!replyText){showToast('Please enter a reply text','error');return}
+  const btn=document.getElementById('btnProcessReply');
+  const loader=document.getElementById('replyLoading');
+  const result=document.getElementById('replyResult');
+  btn.disabled=true;loader.classList.add('show');result.classList.remove('show');
+  try{
+    const res=await fetch(`${API}/receive-reply`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({script_id:scriptId,reply_text:replyText})});
+    if(!res.ok)throw new Error(`HTTP ${res.status}`);
+    const data=await res.json();
+    const dec=data.decision||'unknown';
+    const decClass={approved:'badge-approved',revision:'badge-pending',rejected:'badge-rejected',call_requested:'badge-revision'}[dec]||'badge-draft';
+    result.innerHTML=`<div style="text-align:center;margin-bottom:1rem"><span class="badge decision-badge ${decClass}">${dec.replace('_',' ').toUpperCase()}</span></div><pre>${JSON.stringify(data,null,2)}</pre>`;
+    result.classList.add('show');
+    showToast(`Reply classified: ${dec}`,'success');
+    await fetchAllStatuses();
+  }catch(e){
+    result.innerHTML=`<span class="badge badge-rejected"><i class="fa-solid fa-circle-xmark"></i> Error</span><pre style="margin-top:.8rem">${e.message}</pre>`;
+    result.classList.add('show');
+    showToast(`Failed: ${e.message}`,'error');
+  }finally{btn.disabled=false;loader.classList.remove('show')}
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MONITOR REFRESH
+   ═══════════════════════════════════════════════════════════════════════ */
+async function refreshMonitor(){
+  showToast('Refreshing all scripts…','info');
+  await fetchAllStatuses();
+  showToast('Monitor updated','success');
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   POPULATE DROPDOWNS
+   ═══════════════════════════════════════════════════════════════════════ */
+function populateDropdowns(){
+  const opts=SCRIPT_IDS.map(id=>`<option value="${id}">${id}</option>`).join('');
+  document.getElementById('approvalScriptId').innerHTML=opts;
+  document.getElementById('replyScriptId').innerHTML=opts;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════════════════════════════════════ */
+populateDropdowns();
+fetchAllStatuses();
+refreshTimer=setInterval(fetchAllStatuses,30000);
+
+/* Connection check */
+async function checkConnection(){
+  try{await fetch(`${API}/status/SCR-001`,{method:'HEAD',mode:'no-cors'});document.getElementById('connDot').style.background='var(--green)';document.getElementById('connDot').style.boxShadow='0 0 6px var(--green)'}
+  catch(e){document.getElementById('connDot').style.background='var(--red)';document.getElementById('connDot').style.boxShadow='0 0 6px var(--red)'}
+}
+checkConnection();setInterval(checkConnection,15000);
+</script>
+</body>
+</html>
